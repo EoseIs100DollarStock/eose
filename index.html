@@ -204,12 +204,12 @@
         <div class="inputs-grid">
           <div class="field">
             <label>Target year <span class="unit">--</span></label>
-            <select id="targetYear">
+            <select id="targetYear" onchange="updateLinesForYear()">
               <option value="2026">2026</option>
               <option value="2027">2027</option>
-              <option value="2028" selected>2028</option>
+              <option value="2028">2028</option>
               <option value="2029">2029</option>
-              <option value="2030">2030</option>
+              <option value="2030" selected>2030</option>
             </select>
           </div>
 
@@ -220,12 +220,12 @@
 
           <div class="field">
             <label>Number of manufacturing lines <span class="unit">--</span></label>
-            <input id="numLines" type="number" step="1" value="4">
+            <input id="numLines" type="number" step="1" value="12">
           </div>
 
           <div class="field">
             <label>EV / EBITDA multiple <span class="unit">x</span></label>
-            <input id="evEbitdaMultiple" type="number" step="0.1" value="22">
+            <input id="evEbitdaMultiple" type="number" step="0.1" value="30">
           </div>
         </div>
       </div>
@@ -402,7 +402,7 @@
 
   <script>
     const defaults = {
-      numLines: 4,
+      numLines: 12,  // Default for 2030
       cycleTimeSec: 10,
       capacityUtilPct: 85,
       kwhPerModule: 1.19047619,
@@ -414,9 +414,18 @@
       rndM: 60,
       debtM: 1000,
       sharesM: 600,
-      evEbitdaMultiple: 22,
-      targetYear: 2028,
+      evEbitdaMultiple: 30,
+      targetYear: 2030,
       discountRate: 20
+    };
+
+    // Manufacturing lines by year
+    const linesByYear = {
+      2026: 4,
+      2027: 4,
+      2028: 8,
+      2029: 12,
+      2030: 12
     };
 
     function formatNumber(value, decimals = 2) {
@@ -431,6 +440,15 @@
       const el = document.getElementById(id);
       const v = parseFloat(el.value);
       return isNaN(v) ? 0 : v;
+    }
+
+    function updateLinesForYear() {
+      const targetYear = parseInt(document.getElementById("targetYear").value);
+      const numLinesInput = document.getElementById("numLines");
+      if (linesByYear[targetYear]) {
+        numLinesInput.value = linesByYear[targetYear];
+      }
+      recalculate();
     }
 
     function resetDefaults() {
@@ -471,12 +489,13 @@
       const totalCapacityGWh = annualCapacityPerLineGWh * numLines;
 
       // Revenue
-      const revenueM = totalCapacityGWh * 1000 * asp; // GWh * 1000 * $/kWh => $M
+      // GWh = 1M kWh, so: GWh * ($/kWh) = $M
+      const revenueM = totalCapacityGWh * asp;
 
       // Credits and COGS
       const effective45x = creditsPerKwh * transferRate;
       const unitCogsW45x = unitCogsBefore45x - effective45x;
-      const cogsM = totalCapacityGWh * 1000 * unitCogsW45x;
+      const cogsM = totalCapacityGWh * unitCogsW45x;
 
       const grossProfitM = revenueM - cogsM;
       const grossMarginPct =
