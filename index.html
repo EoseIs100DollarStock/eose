@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Share Price Projection Tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+    h1, h2 {
+      margin-top: 0;
+    }
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+    }
+    .card {
+      background: #020617;
+      border-radius: 16px;
+      padding: 18px 20px;
+      border: 1px solid #1f2937;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.45);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .card-header small {
+      color: #9ca3af;
+      font-size: 12px;
+    }
+    .inputs-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 16px;
+    }
+    @media (max-width: 640px) {
+      .inputs-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+    }
+    .field label {
+      color: #d1d5db;
+      display: flex;
+      justify-content: space-between;
+    }
+    .field small {
+      color: #6b7280;
+      font-size: 11px;
+    }
+    .field input, .field select {
+      border-radius: 10px;
+      border: 1px solid #374151;
+      padding: 8px 10px;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 14px;
+      width: 100%;
+    }
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
+    }
+    .unit {
+      color: #6b7280;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    .btn-row {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      border-radius: 999px;
+      padding: 8px 16px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #22c55e, #22d3ee);
+      color: #020617;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid #374151;
+      color: #e5e7eb;
+    }
+    .results-section {
+      margin-top: 8px;
+    }
+    .results-group {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed #1f2937;
+    }
+    .results-group:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .results-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #6b7280;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 12px;
+      font-size: 13px;
+    }
+    .result-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .result-label {
+      color: #9ca3af;
+    }
+    .result-value {
+      font-weight: 500;
+    }
+    .highlight {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #22c55e;
+    }
+    .highlight-caption {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      color: #9ca3af;
+    }
+    .pill strong {
+      color: #e5e7eb;
+      font-weight: 600;
+      margin-left: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Share Price Projection Tool</h1>
+  <p style="max-width: 800px; color:#9ca3af; font-size:14px;">
+    Change the assumptions on the left and click <strong>Recalculate</strong>. All amounts are in USD.
+    Capacity is computed from cycle time, utilization, and kWh/module, then mapped to revenue,
+    EBITDA, enterprise value, and implied share price.
+  </p>
+
+  <div class="app">
+    <!-- INPUTS -->
+    <div class="card">
+      <div class="card-header">
+        <h2 style="font-size:16px;">Assumptions</h2>
+        <small>Units shown in gray</small>
+      </div>
+
+      <!-- Valuation Parameters -->
+      <div style="margin-bottom: 16px;">
+        <div class="results-title" style="margin-bottom: 8px;">Valuation Parameters</div>
+        <div class="inputs-grid">
+          <div class="field">
+            <label>Target year <span class="unit">--</span></label>
+            <select id="targetYear">
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+              <option value="2028" selected>2028</option>
+              <option value="2029">2029</option>
+              <option value="2030">2030</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>DCF discount rate <span class="unit">%</span></label>
+            <input id="discountRate" type="number" step="0.1" value="20">
+          </div>
+
+          <div class="field">
+            <label>Number of manufacturing lines <span class="unit">--</span></label>
+            <input id="numLines" type="number" step="1" value="4">
+          </div>
+
+          <div class="field">
+            <label>EV / EBITDA multiple <span class="unit">x</span></label>
+            <input id="evEbitdaMultiple" type="number" step="0.1" value="22">
+          </div>
+        </div>
+      </div>
+
+      <!-- Production Parameters -->
+      <div style="margin-bottom: 16px;">
+        <div class="results-title" style="margin-bottom: 8px;">Production Parameters</div>
+        <div class="inputs-grid">
+          <div class="field">
+            <label>Finished product cycle time <span class="unit">seconds</span></label>
+            <input id="cycleTimeSec" type="number" step="0.1" value="10">
+          </div>
+
+          <div class="field">
+            <label>Capacity utilization <span class="unit">%</span></label>
+            <input id="capacityUtilPct" type="number" step="0.1" value="85">
+          </div>
+
+          <div class="field">
+            <label>Z3 module energy capacity <span class="unit">kWh/module</span></label>
+            <input id="kwhPerModule" type="number" step="0.000001" value="1.19047619">
+          </div>
+        </div>
+      </div>
+
+      <!-- Financial Parameters -->
+      <div style="margin-bottom: 16px;">
+        <div class="results-title" style="margin-bottom: 8px;">Financial Parameters</div>
+        <div class="inputs-grid">
+          <div class="field">
+            <label>Average selling price <span class="unit">$ / kWh</span></label>
+            <input id="asp" type="number" step="1" value="256">
+          </div>
+
+          <div class="field">
+            <label>Unit COGS before 45x <span class="unit">$ / kWh</span></label>
+            <input id="unitCogsBefore45x" type="number" step="0.1" value="160">
+          </div>
+
+          <div class="field">
+            <label>45x &amp; active electrode credits <span class="unit">$ / kWh</span></label>
+            <input id="creditsPerKwh" type="number" step="0.1" value="47">
+          </div>
+
+          <div class="field">
+            <label>45x transfer rate <span class="unit">%</span></label>
+            <input id="transferPct" type="number" step="0.1" value="90">
+          </div>
+
+          <div class="field">
+            <label>SG&amp;A <span class="unit">$M</span></label>
+            <input id="sgaM" type="number" step="1" value="125">
+          </div>
+
+          <div class="field">
+            <label>R&amp;D <span class="unit">$M</span></label>
+            <input id="rndM" type="number" step="1" value="60">
+          </div>
+
+          <div class="field">
+            <label>Total debt <span class="unit">$M</span></label>
+            <input id="debtM" type="number" step="10" value="1000">
+          </div>
+
+          <div class="field">
+            <label>Fully diluted shares <span class="unit">million</span></label>
+            <input id="sharesM" type="number" step="1" value="600">
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" onclick="recalculate()">Recalculate</button>
+        <button class="btn-secondary" onclick="resetDefaults()">Reset defaults</button>
+      </div>
+
+      <div class="pill-row">
+        <div class="pill">Capacity per line <strong id="capPerLinePill">–</strong> GWh</div>
+        <div class="pill">Total capacity <strong id="capTotalPill">–</strong> GWh</div>
+        <div class="pill">EBITDA margin <strong id="ebitdaMarginPill">–</strong>%</div>
+      </div>
+    </div>
+
+    <!-- OUTPUTS -->
+    <div class="card">
+      <div class="card-header">
+        <h2 style="font-size:16px;">Implied Valuation</h2>
+        <small>Outputs (derived from inputs)</small>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div class="highlight" id="dcfPriceDisplay">$–</div>
+        <div class="highlight-caption">DCF Stock Price (Present Value @ <span id="dcfRateDisplay">–</span>% discount)</div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div class="highlight" id="sharePriceDisplay" style="font-size: 24px; color: #38bdf8;">$–</div>
+        <div class="highlight-caption">Implied Future Share Price (<span id="futureYearDisplay">–</span>)</div>
+      </div>
+
+      <div class="results-section">
+        <div class="results-group">
+          <div class="results-title">Capacity &amp; Revenue</div>
+          <div class="results-grid">
+            <div class="result-line">
+              <span class="result-label">Avg. capacity per line</span>
+              <span class="result-value" id="avgCapPerLine">–</span>
+            </div>
+            <div class="result-line">
+              <span class="result-label">Total annual production</span>
+              <span class="result-value" id="totalCap">–</span>
+            </div>
+            <div class="result-line">
+              <span class="result-label">Revenue</span>
+              <span class="result-value" id="revenue">–</span>
+            </div>
+            <div class="result-line">
+              <span class="result-label">Effective 45x credits</span>
+              <span class="result-value" id="effectiveCredits">–</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="results-group">
+          <div class="results-title">Unit Economics &amp; Margin</div>
+          <div class="results-grid">
+            <div class="result-line">
+              <span class="result-label">Unit COGS w/ 45x</span>
+              <span class="result-value" id="unitCogsW45x">–</span>
+            </div>
+            <div class="result-line">
+              <span class="result-label">COGS</span>
+              <span class="result-value" id="cogs">–</span>
+            </div>
+            <div class="result-line">
+              <span class="result-label">Gross profit</span>
+              <span class="result-value" id="grossProfit">–</span>
+            </div>
+            <div class="result-line">
+              <span class="result-label">Gross margin</span>
+              <span class="result-value" id="grossMargin">–</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="results-group">
+          <div class="results-title">EBITDA &amp; Valuation</div>
+          <div class="results-grid">
+            <div class="result-line">
+              <span class="result-label">OpEx (SG&amp;A + R&amp;D)</span>
+              <span class="result-value" id="opEx">–</span>
+            </div>
+            <div class="result-line">
+              <span class="result-label">EBITDA</span>
+              <span class="result-value" id="ebitda">–</span>
+            </div>
+            <div class="result-line">
+              <span class="result-label">EBITDA margin</span>
+              <span class="result-value" id="ebitdaMargin">–</span>
+            </div>
+            <div class="result-line">
+              <span class="result-label">Enterprise value</span>
+              <span class="result-value" id="enterpriseValue">–</span>
+            </div>
+            <div class="result-line">
+              <span class="result-label">Market cap (EV - debt)</span>
+              <span class="result-value" id="marketCap">–</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const defaults = {
+      numLines: 4,
+      cycleTimeSec: 10,
+      capacityUtilPct: 85,
+      kwhPerModule: 1.19047619,
+      asp: 256,
+      unitCogsBefore45x: 160,
+      creditsPerKwh: 47,
+      transferPct: 90,
+      sgaM: 125,
+      rndM: 60,
+      debtM: 1000,
+      sharesM: 600,
+      evEbitdaMultiple: 22,
+      targetYear: 2028,
+      discountRate: 20
+    };
+
+    function formatNumber(value, decimals = 2) {
+      if (!isFinite(value)) return "–";
+      return value.toLocaleString(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function getNumber(id) {
+      const el = document.getElementById(id);
+      const v = parseFloat(el.value);
+      return isNaN(v) ? 0 : v;
+    }
+
+    function resetDefaults() {
+      Object.entries(defaults).forEach(([key, val]) => {
+        const el = document.getElementById(key);
+        if (el) el.value = val;
+      });
+      recalculate();
+    }
+
+    function recalculate() {
+      const numLines = getNumber("numLines");
+      const cycleTimeSec = getNumber("cycleTimeSec");
+      const capacityUtilPct = getNumber("capacityUtilPct");
+      const kwhPerModule = getNumber("kwhPerModule");
+      const asp = getNumber("asp");
+      const unitCogsBefore45x = getNumber("unitCogsBefore45x");
+      const creditsPerKwh = getNumber("creditsPerKwh");
+      const transferPct = getNumber("transferPct");
+      const sgaM = getNumber("sgaM");
+      const rndM = getNumber("rndM");
+      const debtM = getNumber("debtM");
+      const sharesM = getNumber("sharesM");
+      const evEbitdaMultiple = getNumber("evEbitdaMultiple");
+      const targetYear = parseInt(document.getElementById("targetYear").value);
+      const discountRate = getNumber("discountRate");
+
+      const capacityUtil = capacityUtilPct / 100;
+      const transferRate = transferPct / 100;
+      const currentYear = new Date().getFullYear();
+      const yearsToTarget = targetYear - currentYear;
+
+      // Capacity
+      const modulesPerYearPerLine =
+        (3600 / cycleTimeSec) * 24 * 365 * capacityUtil;
+      const annualCapacityPerLineGWh =
+        (modulesPerYearPerLine * kwhPerModule) / 1_000_000;
+      const totalCapacityGWh = annualCapacityPerLineGWh * numLines;
+
+      // Revenue
+      const revenueM = totalCapacityGWh * 1000 * asp; // GWh * 1000 * $/kWh => $M
+
+      // Credits and COGS
+      const effective45x = creditsPerKwh * transferRate;
+      const unitCogsW45x = unitCogsBefore45x - effective45x;
+      const cogsM = totalCapacityGWh * 1000 * unitCogsW45x;
+
+      const grossProfitM = revenueM - cogsM;
+      const grossMarginPct =
+        revenueM > 0 ? (grossProfitM / revenueM) * 100 : 0;
+
+      // EBITDA & valuation
+      const opExM = sgaM + rndM;
+      const ebitdaM = grossProfitM - opExM;
+      const ebitdaMarginPct =
+        revenueM > 0 ? (ebitdaM / revenueM) * 100 : 0;
+
+      const enterpriseValueB = (ebitdaM * evEbitdaMultiple) / 1000;
+      const marketCapB = enterpriseValueB - debtM / 1000;
+
+      const sharePrice =
+        sharesM > 0 ? (marketCapB * 1000) / sharesM : 0;
+
+      // DCF calculation
+      const discountFactor = Math.pow(1 + discountRate / 100, yearsToTarget);
+      const dcfStockPrice = yearsToTarget > 0 ? sharePrice / discountFactor : sharePrice;
+
+      // Update UI
+      document.getElementById("avgCapPerLine").textContent =
+        formatNumber(annualCapacityPerLineGWh, 3) + " GWh";
+      document.getElementById("totalCap").textContent =
+        formatNumber(totalCapacityGWh, 3) + " GWh";
+      document.getElementById("revenue").textContent =
+        "$" + formatNumber(revenueM, 2) + " M";
+      document.getElementById("effectiveCredits").textContent =
+        "$" + formatNumber(effective45x, 1) + " / kWh";
+
+      document.getElementById("unitCogsW45x").textContent =
+        "$" + formatNumber(unitCogsW45x, 1) + " / kWh";
+      document.getElementById("cogs").textContent =
+        "$" + formatNumber(cogsM, 2) + " M";
+      document.getElementById("grossProfit").textContent =
+        "$" + formatNumber(grossProfitM, 2) + " M";
+      document.getElementById("grossMargin").textContent =
+        formatNumber(grossMarginPct, 2) + " %";
+
+      document.getElementById("opEx").textContent =
+        "$" + formatNumber(opExM, 2) + " M";
+      document.getElementById("ebitda").textContent =
+        "$" + formatNumber(ebitdaM, 2) + " M";
+      document.getElementById("ebitdaMargin").textContent =
+        formatNumber(ebitdaMarginPct, 2) + " %";
+      document.getElementById("enterpriseValue").textContent =
+        "$" + formatNumber(enterpriseValueB, 3) + " B";
+      document.getElementById("marketCap").textContent =
+        "$" + formatNumber(marketCapB, 3) + " B";
+
+      document.getElementById("sharePriceDisplay").textContent =
+        "$" + formatNumber(sharePrice, 2);
+      document.getElementById("dcfPriceDisplay").textContent =
+        "$" + formatNumber(dcfStockPrice, 2);
+      document.getElementById("dcfRateDisplay").textContent = formatNumber(discountRate, 1);
+      document.getElementById("futureYearDisplay").textContent = targetYear;
+
+      // Pills
+      document.getElementById("capPerLinePill").textContent =
+        formatNumber(annualCapacityPerLineGWh, 3);
+      document.getElementById("capTotalPill").textContent =
+        formatNumber(totalCapacityGWh, 3);
+      document.getElementById("ebitdaMarginPill").textContent =
+        formatNumber(ebitdaMarginPct, 1);
+    }
+
+    // Initial calc
+    resetDefaults();
+  </script>
+</body>
+</html>
